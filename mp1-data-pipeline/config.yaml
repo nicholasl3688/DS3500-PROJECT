@@ -1,0 +1,15 @@
+processing:
+  remove_duplicates: True
+
+missing:
+  enabled: True
+  axis: "rows"
+
+outliers:
+  enabled: True
+  columns:
+    - Score
+  method: iqr
+  threshold: 1.5 
+
+
