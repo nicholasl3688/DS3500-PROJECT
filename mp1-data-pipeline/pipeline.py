@@ -2,26 +2,19 @@ import argparse
 import logging
 import sys
 from pathlib import Path
-from data_loaders import load_data
-from data_processor import process_data, create_cleaning_report
-
+from src import (
+    create_cleaning_report,
+    load_data,
+    process_data,
+    save_data,
+    setup_logging,
+    validate_dataframe,
+    validate_input,
+)
 
 logger = logging.getLogger(__name__)
 
-def setup_logging(verbose=False):
-# configure looping for te pipeline
-    if verbose==False:
-        logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s %(levelname)-8s %(name)s — %(message)s",
-        datefmt="%H:%M:%S"
-        )
-    else:
-        logging.basicConfig(
-        level=logging.DEBUG,
-        format="%(asctime)s %(levelname)-8s %(name)s — %(message)s",
-        datefmt="%H:%M:%S"
-        )
+
 
 def parse_arguments():
 # Parse command-line arguments.
@@ -55,17 +48,6 @@ def parse_arguments():
     return parser.parse_args()
 
 
-def validate_input(filepath):
-    # """Check whether the input path exists and is a file."""
-    p = Path(filepath)
-    if not p.is_file():
-        logger.error(f"Input file not found: {filepath}")
-        return False
-    else:
-        logger.info(f"Input file validated: {filepath}")
-        return True
-
-
 
 
 def main():
@@ -85,18 +67,30 @@ def main():
     except ValueError:
         sys.exit(1)
 
+    required_columns = config["validation"]["required_columns"]
+    numeric_columns = config["validation"]["numeric_columns"]
+    rows_before = len(data)
+    try:
+        data = validate_dataframe(data, required_columns, numeric_columns)
+    except ValueError:
+        sys.exit(1)
+    logger.info(f"Validation complete: {rows_before} -> {len(data)} rows")
+
     og_copy = data.copy()
     try:
         data = process_data(data, config)
     except ValueError:
-        sys.exit(1)  
+        sys.exit(1)
 
     report = create_cleaning_report(og_copy, data)
-    print(report)
-    logger.info(f"Processing complete: {report['rows_before']} to {report['rows_after']} rows.")
+    logger.info(f"Processing complete: {report['rows_before']} -> {report['rows_after']} rows")
 
-    data.to_csv(args.output, index=False)
+    save_data(data, args.output)
     logger.info(f"Saved cleaned data to {args.output}")
+
+    print(report)
+
+
 
 
 
